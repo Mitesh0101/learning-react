@@ -323,10 +323,10 @@ const [gender, setGender] = useState("Male");
 const [city, setCity] = useState("Surat");
 
 // JSX for Radio
-<input onClick={(e) => setGender(e.target.value)} checked={gender === "Male"} type="radio" name="gender" value="Male" />
+<input onChange={(e) => setGender(e.target.value)} checked={gender === "Male"} type="radio" name="gender" value="Male" />
 
 // JSX for Dropdown
-<select defaultValue={city} onClick={(e) => setCity(e.target.value)}>
+<select defaultValue={city} onChange={(e) => setCity(e.target.value)}>
   <option value="Ahmedabad">Ahmedabad</option>
   <option value="Surat">Surat</option>
 </select>
@@ -414,3 +414,98 @@ const divStyle = {
 - **Event Selection:** While I used `onClick` for form elements, I learned that `onChange` is the industry standard for checkboxes, radios, and selects as it more accurately captures the state change.
 - **JSX Mapping:** I found that using curly braces `{}` in a map without a `return` statement results in an empty UI. Parentheses `()` are the shorthand for returning JSX directly.
 - **Key Location:** The `key` must be placed on the **outermost** element returned within the `.map()` loop (e.g., the `<tr>` or the `<div>` wrapping the component), not inside the child component itself.
+
+# My React.js Learning Journey: Day 4
+
+## 💡 Core Concepts
+- **Dynamic Styling with State:** I learned that I can store entire style objects in state. By using the spread operator (`...`), I can update specific properties (like `backgroundColor`) while preserving the rest of the style configuration. This is powerful for theme switching or responding to user interactions.
+- **External CSS & Global Scope:** Traditional `.css` files imported into a component are not scoped to that component; they become global once loaded. I found that the best practice is to import general styles in `main.jsx` and component-specific styles within the respective component file, though I must be wary of class name collisions.
+- **CSS Modules:** To solve the global collision problem, I use CSS Modules (`filename.module.css`). React treats these as objects where each class name is mapped to a unique, hashed string. This ensures that styles are strictly scoped to the component where they are imported.
+- **Styled Components (CSS-in-JS):** This is an external library that allows me to create components that have styles attached to them using tagged template literals. It enables me to keep my styling logic and component logic in the same file without the messiness of standard inline objects.
+- **React-Bootstrap:** Instead of just using standard Bootstrap classes, `react-bootstrap` provides pre-built components (like `<Button />`). This feels more "React-like" because I interact with props (e.g., `variant="danger"`) rather than raw string classes.
+- **The `useRef` Hook:** This hook allows me to create a "reference" to a DOM element. Unlike state, updating a ref does not trigger a re-render. I use it when I need to perform imperative actions—like focusing an input, manually changing a value, or directly manipulating a tag's style—without going through the standard React declarative flow.
+
+
+
+## 🛠️ Implementation
+
+### Dynamic Inline Themes
+I practiced updating a theme by passing new colors through a function that updates a state-based style object.
+
+```javascript
+const [divstyle, setDivstyle] = useState({
+  border: "2px solid black",
+  borderRadius: "2rem",
+  textAlign: "center"
+});
+
+function changeTheme(bgColor, color) {
+  setDivstyle({ ...divstyle, backgroundColor: bgColor }); // Preserving other properties
+}
+
+// In JSX
+<div style={divstyle}>...</div>
+```
+
+### CSS Modules vs. Global CSS
+I compared the two by observing how global CSS uses strings and Modules use object notation.
+
+```javascript
+// Global CSS
+import "./style.css";
+<div className="container">...</div>
+
+// CSS Modules (Scoped)
+import style from "./style.module.css";
+<div className={style.container}>...</div>
+```
+
+### Styled Components Syntax
+I implemented styled components using the tagged template literal syntax, which allows for full CSS power (hover states, media queries) inside JavaScript.
+
+```javascript
+import styled from "styled-components";
+
+const Heading = styled.h1`
+  color: red;
+  background-color: black;
+  padding: 2rem;
+  text-align: center;
+`;
+
+// Usage
+<Heading>Hello World</Heading>
+```
+
+### DOM Manipulation with `useRef`
+I used `useRef` to directly access an input element to trigger focus and toggle visibility.
+
+
+
+```javascript
+const inputRef = useRef(null);
+
+const refHandler = () => {
+  inputRef.current.focus(); // Accessing the DOM node directly
+  inputRef.current.style.color = "green";
+};
+
+// Assigning the ref
+<input type="text" ref={inputRef} />
+```
+
+## 📂 Workflow & Tools
+- **Dependencies:** I learned to install styling libraries via npm:
+  - `npm i styled-components`
+  - `npm i react-bootstrap bootstrap`
+- **Global Bootstrap Setup:** To use Bootstrap project-wide, I must import the minified CSS in my entry point file (`main.jsx`):
+  ```javascript
+  import 'bootstrap/dist/css/bootstrap.min.css';
+  ```
+- **Naming Conventions:** CSS Modules require the `.module.css` suffix to be recognized by the build tool (Vite).
+
+## 🔍 Key Corrections
+- **The `className` Requirement:** I have to remember that `class` is a reserved keyword in JavaScript. In JSX, I must always use `className` for CSS classes.
+- **`useRef` and `.current`:** I learned that a ref is an object with a single property called `.current`. To access the actual DOM element, I must always use `inputRef.current`, not just `inputRef`.
+- **Ref Overuse:** I realized that `useRef` should be used sparingly. Most UI changes should be handled via state; refs are an "escape hatch" for when I need direct access to the DOM node for things like focus or third-party library integration.
+- **Object-based Styled Components:** I noted that `styled-components` can also accept an object syntax, but the template literal approach is more common as it supports standard CSS syntax.
