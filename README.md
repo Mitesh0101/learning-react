@@ -509,3 +509,134 @@ const refHandler = () => {
 - **`useRef` and `.current`:** I learned that a ref is an object with a single property called `.current`. To access the actual DOM element, I must always use `inputRef.current`, not just `inputRef`.
 - **Ref Overuse:** I realized that `useRef` should be used sparingly. Most UI changes should be handled via state; refs are an "escape hatch" for when I need direct access to the DOM node for things like focus or third-party library integration.
 - **Object-based Styled Components:** I noted that `styled-components` can also accept an object syntax, but the template literal approach is more common as it supports standard CSS syntax.
+
+# My React.js Learning Journey: Day 5
+
+## 💡 Core Concepts
+- **Uncontrolled Components:** I learned that these are form elements where the DOM itself handles the form data, rather than React state. Instead of writing an event handler for every state update, I pull the value from the DOM when I need it (usually on submission). 
+- **Imperative DOM Access:** While I can use `querySelector`, I found that `useRef` is the standard "React way" to access DOM nodes in an uncontrolled fashion. It keeps the reference within the React ecosystem without bypassing the virtual DOM entirely.
+- **Function Props (Lifting State/Logic):** I practiced passing functions as props to child components. This is essential for centralized logic; if a function is used by multiple children, defining it in the parent ensures consistency and easier maintenance.
+- **Modern `ref` Passing (React 19+):** I discovered that starting with React 19, `ref` is treated as a regular prop. I no longer need to wrap components in the `forwardRef` high-order component. I can simply pass `ref` to a child and access it through `props.ref`.
+- **Form Actions & Status:** I explored `useFormStatus` from `react-dom`. It allows me to track the status of a form submission (specifically the `pending` state) without manually managing a "loading" state.
+- **Transitioning Updates:** I learned about `useTransition`, which helps me handle non-urgent UI updates. It provides a `pending` boolean and a `startTransition` function to wrap long-running tasks, preventing the UI from freezing during heavy processing.
+- **The Philosophy of Pure Components:**
+    - **Purity Defined:** A function is pure if it returns the same output for the same input and produces no side effects. In React, a Pure Component is one that renders the exact same JSX given the same props.
+    - **Side Effects to Avoid:** A component is **impure** if it changes a variable that existed before the render, or if it modifies an object/array passed as a prop.
+    - **React.memo:** This is how I can implement pure component optimization. By wrapping a component in `React.memo`, React will skip re-rendering that component if its props haven't changed.
+    - **Strict Mode:** I noticed that React's Strict Mode renders components twice in development. This is a deliberate "stress test" to help me catch impurities (like a component changing a global variable during render).
+
+
+
+## 🛠️ Implementation
+
+### Uncontrolled Forms (The React Way)
+I implemented an uncontrolled form using `useRef` to avoid the overhead of re-rendering on every keystroke. I also used `event.preventDefault()` to stop the browser's default reload behavior.
+
+```javascript
+import { useRef } from "react";
+
+function App() {
+  const nameRef = useRef(null);
+  const passwordRef = useRef(null);
+
+  const handleForm = event => {
+    event.preventDefault(); 
+    // Accessing values directly from the DOM nodes
+    const name = nameRef.current.value;
+    const password = passwordRef.current.value;
+    console.log(`Submitted: ${name}`);
+  }
+
+  return (
+    <form onSubmit={handleForm}>
+      <input type="text" ref={nameRef} placeholder="Name" />
+      <input type="password" ref={passwordRef} placeholder="Password" />
+      <button type="submit">Submit</button>
+    </form>
+  );
+}
+```
+
+### Passing Functions to Multiple Children
+I centralized an alert function in the parent and passed it down to multiple `User` components.
+
+```javascript
+// App.jsx
+function App() {
+  const displayFunc = (name) => alert(name);
+    
+  return (
+    <>
+      <User displayFunc={displayFunc} name="Anil" />
+      <User displayFunc={displayFunc} name="Sam" />
+    </>
+  );
+}
+
+// User.jsx
+function User({ displayFunc, name }) {
+    return <button onClick={() => displayFunc(name)}>Display {name}</button>;
+}
+```
+
+### Async Form Status (useFormStatus)
+I practiced using the `useFormStatus` hook to automatically disable my submit button during an asynchronous action.
+
+```javascript
+import { useFormStatus } from "react-dom";
+
+function CustomerForm() {
+  const { pending } = useFormStatus(); // Automatically tracks form parent status
+
+  return (
+    <button disabled={pending}>
+      {pending ? "Submitting..." : "Submit"}
+    </button>
+  );
+}
+
+function App() {
+  async function handleSubmit() {
+    await new Promise(res => setTimeout(res, 2000));
+    console.log("Form Action Complete");
+  }
+
+  return (
+    <form action={handleSubmit}>
+      <input type="text" />
+      <CustomerForm />
+    </form>
+  );
+}
+```
+
+### Pure Components & Immutability
+I learned that to keep a component pure, I must treat props and state as read-only.
+
+
+
+```javascript
+// PURE: Only uses its own props to calculate output
+function Receipt({ items, taxRate }) {
+    const total = items.reduce((sum, item) => sum + item.price, 0);
+    return <h1>Total: {total * taxRate}</h1>;
+}
+
+// IMPURE: Modifies an external variable (AVOID THIS)
+let guestCount = 0;
+function Cup() {
+    guestCount = guestCount + 1; // SIDE EFFECT!
+    return <h2>Tea cup for guest #{guestCount}</h2>;
+}
+```
+
+## 📂 Workflow & Tools
+- **Async Simulation:** I use `new Promise(res => setTimeout(res, 2000))` to simulate network latency when testing loading states and transitions.
+- **Form Actions:** I started using the `action` attribute on `<form>` instead of `onSubmit` when working with React 19's new form features.
+- **React-DOM Hooks:** I noted that `useFormStatus` must be used in a component that is **nested inside** a `<form>`, not the component that contains the `<form>` tag itself.
+
+## 🔍 Key Corrections
+- **Manual DOM vs. Refs:** While I practiced `querySelector`, I learned it is technically an "anti-pattern" in React because it searches the whole document. `useRef` is safer because it is scoped to the specific component instance.
+- **Transition vs. Form Status:** I realized `useTransition` is for general UI updates (like filtering a long list), while `useFormStatus` is specialized for `react-dom` form actions.
+- **React 19 `ref` Prop:** I corrected my understanding of `forwardRef`. In older codebases, I'll see `const MyInput = forwardRef((props, ref) => ...)`, but in my new React 19 projects, I can treat `ref` as just another property in the `props` object.
+- **Impurities in Render:** I learned that I should never perform data fetching or timer setup directly in the component's render body; these belong in `useEffect` to maintain component purity during the "Rendering" phase.
