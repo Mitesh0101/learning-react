@@ -742,3 +742,158 @@ return (
 - **The Spread Operator Limitation:** I realized that `...data` only performs a **shallow copy**. If I update `data.address.city` without spreading the `address` object as well, the reference to `address` stays the same, which can lead to React skipping necessary re-renders of components that depend on the address.
 - **useId for Keys:** I learned that `useId` should **never** be used to generate keys for lists. Keys should come from the data itself (like a database ID) to help React track items across re-renders. `useId` is strictly for DOM attributes.
 - **useActionState Parameter Order:** I noted that the action function for `useActionState` receives `previousData` as the first argument and `formData` as the second, which is a specific requirement of the hook.
+
+# My React.js Learning Journey: Day 7
+
+## 💡 Core Concepts
+- **React Fragments:** I learned that Fragments (`<Fragment>` or `<>`) allow me to group multiple sibling elements without adding extra, unnecessary nodes (like wrapper `<div>` tags) to the actual DOM. This keeps the HTML structure clean and prevents CSS layout issues.
+- **Custom Hooks:** I can extract component logic into reusable functions called Custom Hooks. Their names must always start with `use` (e.g., `useToggle`). This allows me to share stateful logic—not state itself—across multiple components.
+- **Context API:** I discovered that the Context API is the native solution to "prop drilling" (passing props through multiple intermediate components that don't actually need the data). It consists of three main parts:
+    - **`createContext`**: Initializes the context object (usually in a separate file to prevent circular dependencies).
+    - **`Provider`**: Wraps the parent component and sends the data via the `value` prop.
+    - **`useContext`**: A hook used in the deeply nested child component to directly receive the data.
+- **React Router:** This library enables client-side routing, turning a React app into a Single Page Application (SPA). 
+    - **`BrowserRouter`**: Uses the HTML5 History API to keep the UI in sync with the URL.
+    - **`Link`**: Replaces standard `<a>` tags. It allows navigation between pages *without* triggering a full browser reload, making the app much faster since only the necessary components update.
+    - **`Routes` & `Route`**: Used to map specific URL paths to their corresponding React components.
+
+## 🛠️ Implementation
+
+### Using Fragments
+I practiced replacing unnecessary wrapper `div` elements with Fragments to keep the DOM tree lightweight.
+
+```javascript
+import { Fragment } from "react";
+
+function App() {
+  return(
+    <Fragment>
+      <h1>Hello</h1>
+    </Fragment>
+    
+    // Shorthand syntax is also valid:
+    // <>
+    //   <h1>Hello</h1>
+    // </>
+  )
+}
+```
+
+### Building a Custom Hook
+I built a `useToggle` hook that manages a boolean state. I implemented logic to either toggle the value automatically or force it to a specific boolean if an argument is passed.
+
+```javascript
+// useToggle.jsx
+import { useState } from "react";
+
+function useToggle(defaultVal) {
+    const [value, setValue] = useState(defaultVal);
+
+    function toggleValue(val) {
+        if (typeof val !== 'boolean') {
+            setValue(!value); // Standard toggle if triggered by an event object
+        } else {
+            setValue(val); // Forced state if boolean is passed
+        }
+    }
+
+    return [value, toggleValue];
+}
+
+// App.jsx
+import useToggle from "./useToggle";
+
+function App() {
+  const [value, toggleValue] = useToggle(true);
+
+  return(
+    <>
+      <button onClick={toggleValue}>Toggle Display</button>
+      <button onClick={() => toggleValue(false)}>Hide Display</button>
+      <button onClick={() => toggleValue(true)}>Show Display</button>
+      {value ? <h1>Display</h1> : null}
+    </>
+  )
+}
+```
+
+### Context API (Avoiding Prop Drilling)
+I created a deep component tree (`App` → `College` → `ClassComponent` → `Student` → `Subject`) and used Context to pass a `subject` state directly from `App` to `Subject` without passing it as a prop through the middle components.
+
+```javascript
+// contextApp.js
+import { createContext } from "react";
+export const SubjectContext = createContext();
+
+// App.jsx (The Provider)
+import { useState } from "react";
+import { SubjectContext } from "./contextApp";
+import College from "./College";
+
+function App() {
+  const [subject, setSubject] = useState("");
+
+  return(
+    <div style={{backgroundColor:"red"}}>
+      <SubjectContext.Provider value={subject}>
+        <select value={subject} onChange={e => setSubject(e.target.value)}>
+          <option value="">Select Your Subject</option>
+          <option value="Maths">Maths</option>
+        </select>
+        <College /> {/* College -> ClassComponent -> Student -> Subject */}
+      </SubjectContext.Provider>
+    </div>
+  )
+}
+
+// Subject.jsx (The Consumer)
+import { useContext } from "react";
+import { SubjectContext } from "./contextApp";
+
+function Subject() {
+    const subject = useContext(SubjectContext); // Accessing data directly
+
+    return(
+        <div style={{backgroundColor: "violet"}}>
+            <h1>Subject = {subject}</h1>
+        </div>
+    )
+}
+```
+
+### React Router Setup
+I implemented basic client-side routing, linking different paths to specific components.
+
+```javascript
+import { BrowserRouter, Routes, Route, Link } from "react-router";
+import User from "./User";
+
+function App() {
+  return(
+    <div>
+      <BrowserRouter>
+        {/* Navigation links that do not reload the page */}
+        <Link to="/">Home</Link>
+        <Link to="/about">About</Link>
+        <Link to="/user">User</Link>
+
+        {/* Route definitions */}
+        <Routes>
+          <Route path="/" element={<h1>Home Page</h1>} />
+          <Route path="/about" element={<h1>About Page</h1>} />
+          <Route path="/user" element={<User />} />
+        </Routes>
+      </BrowserRouter>
+    </div>
+  )
+}
+```
+
+## 📂 Workflow & Tools
+- **Context Separation:** I learned it is a best practice to create the context (e.g., `export const SubjectContext = createContext();`) in a completely separate file to avoid import/export conflicts between the Provider component and the Consumer components.
+- **Router Placement:** While I wrapped `App`'s content in `<BrowserRouter>` for this test, I noted that `BrowserRouter` is usually placed at the very top level of the application, often wrapping the `<App />` component directly inside `main.jsx`.
+- **Custom Hook Return Types:** Just like `useState`, my custom `useToggle` hook returns an array `[value, toggleValue]`. This allows the consuming component to destructure and rename the variables easily.
+
+## 🔍 Key Corrections
+- **Custom Hook Event Overlap:** In my `useToggle` hook, I initially had to account for how React handles events. If a button simply calls `onClick={toggleValue}`, the `val` parameter becomes the React Synthetic Event object (which is not a boolean). That is why I added the `typeof val !== 'boolean'` check to ensure it falls back to a standard toggle behavior instead of crashing.
+- **Link vs Anchor Tags:** I explicitly realized that using standard `<a href="/about">` tags would cause the browser to request a completely new HTML document from the server. Using `<Link to="/about">` intercepts this request and just swaps the React components instantly.
