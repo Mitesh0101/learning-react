@@ -897,3 +897,120 @@ function App() {
 ## 🔍 Key Corrections
 - **Custom Hook Event Overlap:** In my `useToggle` hook, I initially had to account for how React handles events. If a button simply calls `onClick={toggleValue}`, the `val` parameter becomes the React Synthetic Event object (which is not a boolean). That is why I added the `typeof val !== 'boolean'` check to ensure it falls back to a standard toggle behavior instead of crashing.
 - **Link vs Anchor Tags:** I explicitly realized that using standard `<a href="/about">` tags would cause the browser to request a completely new HTML document from the server. Using `<Link to="/about">` intercepts this request and just swaps the React components instantly.
+
+# My React.js Learning Journey: Day 8
+
+## 💡 Core Concepts
+
+- **404 Page Handling:** I learned how to manage invalid URLs using the wildcard path (`path="/*"`). This route acts as a catch-all that renders when no other defined paths match the current URL. 
+- **The Navigate Component:** Instead of just showing a "Not Found" message, I can use the `<Navigate />` component to automatically redirect users to a specific page (like the Home page) when they hit an invalid route.
+- **Nested Routing & Layouts:** I explored how to nest routes inside one another to create complex UI structures (like a dashboard with a sidebar). 
+    - **Relative Paths:** Inside nested routes, child paths should not start with a `/` because they are automatically relative to the parent path.
+    - **The Outlet Component:** This is a crucial placeholder. I place `<Outlet />` in the parent component's JSX to tell React Router exactly where to render the child route's content.
+    - **Index Routes:** I used the `index` attribute on a child route to specify which component should render by default when the parent's base path is visited.
+- **Route Grouping (Prefixes):** I found that I can group related routes under a parent route to give them a shared URL prefix (e.g., grouping `/about` and `/login` under `/user` to create `/user/about` and `/user/login`).
+- **Dynamic Routing:** I learned to create "variable" routes using the colon syntax (`:id`). This allows a single component to handle an infinite number of specific pages (like user profiles or product pages) by capturing the variable part of the URL.
+- **Optional Segments:** I discovered that I can make parts of a URL optional by adding a question mark (`?`) after the segment name (e.g., `path="/users/list?"`). This allows the route to match both `/users` and `/users/list`.
+- **The useParams Hook:** This is the tool I use to retrieve dynamic data from the URL. It returns an object where the keys match the variable names I defined in my route path (e.g., `{ id: '1' }`).
+
+
+
+---
+
+## 🛠️ Implementation
+
+### 404 Handling & Redirection
+I implemented a catch-all route for error pages and practiced using the `Navigate` component for automatic redirection.
+
+```javascript
+import { BrowserRouter, Routes, Route, Navigate } from "react-router";
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<h1>Home</h1>} />
+        {/* Wildcard catch-all for 404 message */}
+        <Route path="/*" element={<h1>404: Page Not Found</h1>} />
+        
+        {/* Alternative: Redirect to Home for any invalid URL */}
+        {/* <Route path="/*" element={<Navigate to="/" />} /> */}
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+### Nested Routes with Index & Outlet
+I created a `College` parent component that manages its own navigation and uses `<Outlet />` to render its children (`Student`, `Department`, etc.).
+
+
+
+**App.jsx (Routing Configuration)**
+```javascript
+<Route path="/college" element={<College />}>
+  {/* Default child rendered via 'index' */}
+  <Route index element={<h1>Student Page</h1>} />
+  <Route path="department" element={<h1>Department Page</h1>} />
+  <Route path="details" element={<h1>College Details Page</h1>} />
+</Route>
+```
+
+**College.jsx (Parent Layout)**
+```javascript
+import { Link, Outlet } from "react-router";
+
+function College() {
+  return (
+    <>
+      <nav>
+        {/* Empty 'to' points to the index route */}
+        <Link to="">Student</Link>
+        <Link to="department">Department</Link>
+        <Link to="details">College Details</Link>
+      </nav>
+      {/* Children render here */}
+      <Outlet />
+    </>
+  );
+}
+```
+
+### Dynamic Parameters and Optional Segments
+I implemented a User Detail system where the ID is required, but the name is optional. I used `useParams` to extract this data in the detail view.
+
+```javascript
+// Route Definition
+<Route path="/users/:id/:name?" element={<UserDetails />} />
+
+// UserDetails.jsx
+import { useParams } from "react-router";
+
+export default function UserDetails() {
+  const { id, name } = useParams(); // Destructuring dynamic params
+  return (
+    <>
+      <h1>User Detail</h1>
+      <p>ID: {id}</p>
+      {name && <p>Name: {name}</p>}
+    </>
+  );
+}
+```
+
+---
+
+## 📂 Workflow & Tools
+
+- **URL Segments:** I defined segments as the parts of a URL separated by `/`. I learned that React Router treats each segment as a potential logic gate for navigation.
+- **Relative Link Syntax:** In nested routes, I noticed that `Link to="department"` (no slash) appends to the current path, while `Link to="/department"` would jump back to the root level.
+- **useParams Extraction:** I practiced using `params.id` (or destructuring) to fetch data. This is essential for fetching specific user data from an API based on the URL.
+
+---
+
+## 🔍 Key Corrections
+
+- **The Slash Mistake:** I initially tried to start nested child paths with `/` (e.g., `path="/department"` inside `/college`). I corrected this because leading slashes make paths absolute (root-level), which breaks the nesting logic.
+- **Navigate vs Link:** I learned that `<Link>` is for user-initiated clicks, while `<Navigate />` is a component that triggers navigation automatically as soon as it renders.
+- **Key Requirement in Maps:** When I generated my user list using `.map()`, I ensured the `key` was placed on the parent `div` wrapping the `<Link>` to maintain React's reconciliation efficiency.
+- **Optional Parameter Positioning:** I noted that optional segments (using `?`) are usually placed at the end of the path. If I have `/users/:id?/:name`, it can cause ambiguity in how React Router parses the URL.
