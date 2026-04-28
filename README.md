@@ -1014,3 +1014,142 @@ export default function UserDetails() {
 - **Navigate vs Link:** I learned that `<Link>` is for user-initiated clicks, while `<Navigate />` is a component that triggers navigation automatically as soon as it renders.
 - **Key Requirement in Maps:** When I generated my user list using `.map()`, I ensured the `key` was placed on the parent `div` wrapping the `<Link>` to maintain React's reconciliation efficiency.
 - **Optional Parameter Positioning:** I noted that optional segments (using `?`) are usually placed at the end of the path. If I have `/users/:id?/:name`, it can cause ambiguity in how React Router parses the URL.
+
+# My React.js Learning Journey: Day 9
+
+## 💡 Core Concepts
+
+- **The NavLink Component:** I learned that `NavLink` is a specialized version of the `Link` component designed specifically for navigation bars. Its main advantage is that it automatically knows if it is "active" (meaning its `to` prop matches the current URL). 
+    - **Default Behavior:** It adds an `active` class to the element by default.
+    - **Custom Styling:** I can pass a function to the `className` prop to apply conditional styles based on the `{ isActive }` boolean.
+- **TailwindCSS Integration:** I explored using TailwindCSS, a utility-first CSS framework. Instead of writing separate CSS files, I apply pre-defined utility classes directly to my JSX elements. I found that installing it involves a specific setup with Vite (initializing a config file and adding directives to `index.css`).
+- **Data Fetching (The Fetch API):** I practiced retrieving data from external servers. 
+    - **Lifecycle Integration:** I use `useEffect` with an empty dependency array `[]` to ensure the API call happens exactly once when the component mounts.
+    - **State Management:** I maintain a `loading` state (boolean) to show a "Loading..." message while the asynchronous request is pending, and a `users` state (array) to store the result once it arrives.
+- **json-server (Mock APIs):** I found a way to simulate a full REST API without writing backend code. By using `json-server` and a `db.json` file, I can perform GET, POST, PUT, and DELETE operations on my local machine. This is perfect for development when the real backend isn't ready yet.
+
+
+
+---
+
+## 🛠️ Implementation
+
+### NavLink and Conditional Classes
+I practiced using `NavLink` with both default behavior and a custom function to handle specific active styles.
+
+```javascript
+import { BrowserRouter, Routes, Route, NavLink } from "react-router";
+
+function App() {
+  return (
+    <BrowserRouter>
+      <div>
+        {/* NavLink automatically adds 'active' class if the URL matches '/' */}
+        <NavLink className="link" to="/">Home</NavLink>
+
+        {/* Custom logic: applying 'custom-active' based on isActive state */}
+        <NavLink 
+          className={({ isActive }) => isActive ? "custom-active link" : "link"} 
+          to="/users"
+        >
+          Users List
+        </NavLink>
+      </div>
+
+      <Routes>
+        <Route path="/" element={<h1>Home Page</h1>} />
+        <Route path="/users" element={<h1>Users List</h1>} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+### Fetching API with Loading States
+I implemented an asynchronous fetch function inside `useEffect` to populate a table with user data from an external URL.
+
+
+
+```javascript
+import { useState, useEffect } from "react";
+
+function App() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchUsersData();
+  }, []);
+  
+  async function fetchUsersData() {
+    // Standard JS fetch inside an async function
+    const response = await fetch("https://dummyjson.com/users");
+    const data = await response.json();
+    
+    setUsers(data.users);
+    setLoading(false); // Stop showing the loading message
+  }
+
+  return (
+    <>
+      <h1>Users Data</h1>
+      {loading ? (
+        <h1>Data Loading...</h1>
+      ) : (
+        <table border="2" cellPadding="20">
+          <thead>
+            <tr>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Age</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users && users.map(user => (
+              <tr key={user.id}>
+                <td>{user.firstName}</td>
+                <td>{user.lastName}</td>
+                <td>{user.age}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </>
+  );
+}
+```
+
+### Setting up json-server
+I practiced creating a local mock database to serve as my backend for testing.
+
+**db.json**
+```json
+{
+    "users": [
+        {"name": "Anil", "age": 29, "email": "anil@test.com"},
+        {"name": "Sam", "age": 34, "email": "sam@test.com"},
+        {"name": "Tony", "age": 31, "email": "tony@test.com"}
+    ]
+}
+```
+
+---
+
+## 📂 Workflow & Tools
+
+- **Tailwind Installation:** I learned to follow the official "Tailwind CSS with Vite" documentation. This requires installing `tailwindcss`, `postcss`, and `autoprefixer`, then generating the `tailwind.config.js` file.
+- **json-server Commands:**
+    - **Install:** `npm install json-server`
+    - **Run:** `npx json-server db.json` (Defaults to `http://localhost:3000`).
+- **REST Endpoints:** I noted that `json-server` automatically creates endpoints like `/users` which support all standard HTTP methods (GET, POST, etc.).
+
+---
+
+## 🔍 Key Corrections
+
+- **Fetching Loop Error:** I realized that if I call `fetchUsersData()` directly in the component body instead of inside `useEffect`, it will trigger an infinite loop. This happens because the fetch updates the state, which triggers a re-render, which calls the fetch again.
+- **Conditional Rendering with Tables:** I found that checking `!loading` before rendering the table prevents the UI from trying to map over an empty `users` array before the data has arrived.
+- **NavLink Function Syntax:** I noted that the `className` prop in `NavLink` expects a function that receives an object. I must destructure it as `({ isActive })` to access the boolean.
+- **JSON Format:** In `db.json`, I must use strict JSON syntax (double quotes for keys and strings) or the server will fail to start.
