@@ -835,6 +835,8 @@ function App() {
 
   return(
     <div style={{backgroundColor:"red"}}>
+      {/* We can now use Context without writing .Provider in React 19
+          <SubjectContext value={subject}> ... </SubjectContext> */}
       <SubjectContext.Provider value={subject}>
         <select value={subject} onChange={e => setSubject(e.target.value)}>
           <option value="">Select Your Subject</option>
@@ -1153,3 +1155,153 @@ I practiced creating a local mock database to serve as my backend for testing.
 - **Conditional Rendering with Tables:** I found that checking `!loading` before rendering the table prevents the UI from trying to map over an empty `users` array before the data has arrived.
 - **NavLink Function Syntax:** I noted that the `className` prop in `NavLink` expects a function that receives an object. I must destructure it as `({ isActive })` to access the boolean.
 - **JSON Format:** In `db.json`, I must use strict JSON syntax (double quotes for keys and strings) or the server will fail to start.
+
+# My React.js Learning Journey: Day 10
+
+## 💡 Core Concepts
+- **Programmatic Navigation:** I learned to use the `useNavigate` hook for redirecting users after a logic sequence (like moving back to the list after an "Edit" or "Delete" operation).
+- **Full CRUD via Fetch:** I practiced all four HTTP methods with the `fetch` API. 
+    - **GET:** The default method for retrieving data.
+    - **POST:** Used for adding new data; requires a `method`, `headers`, and a `body` containing `JSON.stringify(data)`.
+    - **PUT:** Used for updating existing data; target URLs must include the specific ID.
+    - **DELETE:** Used to remove data; requires the specific ID in the URL.
+- **Complex State with `useReducer`:** For components with many related state variables (like large forms), I use `useReducer`. It separates state transition logic into a **reducer function** and uses **dispatch** to trigger updates. This is more scalable than managing five or six separate `useState` hooks.
+- **Computed Property Names:** In my reducer, I used the ES6 syntax `[action.type]: action.val`. This allows me to use the string stored in `action.type` as a dynamic key for the state object.
+- **Performance Optimization (Lazy Loading):** I learned that `lazy` and `Suspense` allow for "code splitting." Instead of the browser downloading the entire application at once, it only loads specific components when they are requested. This significantly improves the initial load speed.
+- **The `use` API (React 19):** I discovered the `use` hook, which simplifies promise handling. Unlike `useContext` or `useEffect`, `use` can be called inside conditional statements and loops, providing much more flexibility when consuming context or data resources.
+
+
+
+---
+
+## 🛠️ Implementation
+
+### CRUD Operations & Navigation
+I implemented a full user management system using `useParams` to fetch IDs for editing and `useNavigate` for post-action redirection.
+
+```javascript
+// UserEdit.jsx - Handling PUT Request
+const editUser = async () => {
+    const response = await fetch(`http://localhost:3000/users/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, age, email })
+    });
+    const data = await response.json();
+    if (data) {
+        alert("User Edited Successfully");
+        navigate("/");
+    }
+}
+```
+
+### Form Validation (Manual & useActionState)
+I practiced two types of validation: real-time state tracking and the new React 19 `useActionState` for forms.
+
+```javascript
+// useActionState Validation Logic
+const handleLogin = (prevData, formData) => {
+    const username = formData.get("username");
+    const password = formData.get("password");
+
+    if (!username || username.length > 5) {
+        return { error: "Username must be 1-5 characters", username, password };
+    } else if (password.length < 8) {
+        return { error: "Password must be at least 8 characters", username, password };
+    }
+    return { message: "Login Successful", username, password };
+}
+```
+
+### useReducer for Large Forms
+I centralized my state management using a reducer function and the computed property name syntax.
+
+```javascript
+const emptyData = {
+  name: "",
+  password: "",
+  email: "",
+  city: "",
+  address: ""
+};
+
+function reducer(data, action) {
+  // Using Computed Property Name [action.type] to update dynamic keys
+  return { ...data, [action.type]: action.val };
+}
+
+function App() {
+  const [state, dispatch] = useReducer(reducer, emptyData);
+
+  return (
+    <input 
+      type="text" 
+      value={state.name} 
+      onChange={(e) => dispatch({ val: e.target.value, type: "name" })} 
+    />
+  );
+}
+```
+
+### Lazy Loading & Suspense
+I optimized performance by loading the `User` component only when the user clicks a button.
+
+```javascript
+import { lazy, Suspense, useState } from "react";
+
+// Component is only imported when demanded
+const User = lazy(() => import("./User"));
+
+function App() {
+  const [load, setLoad] = useState(false);
+
+  return (
+    <>
+      <button onClick={() => setLoad(true)}>Load User</button>
+      {load ? (
+        <Suspense fallback={<h1>Loading Component...</h1>}>
+          <User />
+        </Suspense>
+      ) : null}
+    </>
+  );
+}
+```
+
+### Asynchronous `use` API
+I practiced using the `use` API to process promises outside the traditional `useEffect` flow.
+
+```javascript
+const fetchData = () => fetch("https://dummyjson.com/users").then(res => res.json());
+const userResource = fetchData(); // Call outside to prevent recreation
+
+function Users() {
+  const usersData = use(userResource); // Processes the promise directly
+  return (
+    <>
+      {usersData?.users?.map(user => (
+        <h1 key={user.id}>{user.firstName} {user.lastName}</h1>
+      ))}
+    </>
+  );
+}
+```
+
+---
+
+## 📂 Workflow & Tools
+- **json-server endpoints:**
+    - `GET /users`: Retrieves all records.
+    - `POST /users`: Adds a new record.
+    - `PUT /users/:id`: Replaces a specific record.
+    - `DELETE /users/:id`: Removes a specific record.
+- **Form Status:** I use the `pending` boolean from `useActionState` to disable submit buttons while an action is in progress.
+- **Context with `use`:** I learned that I can conditionally call `use(ThemeContext)` after an early return, which is impossible with `useContext`.
+
+---
+
+## 🔍 Key Corrections
+- **Fetch Headers:** I learned that when using `POST` or `PUT`, I must include `'Content-Type': 'application/json'` in the headers for most servers to correctly parse the `body`.
+- **Validation Timing:** In manual state validation, I found it's safer to check the `event.target.value` directly because state updates are asynchronous and the state variable itself might be one step behind during the execution of the change handler.
+- **Lazy Load Exports:** I noted that components being lazy-loaded **must** be exported as `export default`.
+- **useId Limitation:** I reaffirmed that while `useId` is great for accessibility and form labels, it should never be used as a `key` in a `.map()` loop; I must use data-driven IDs for that purpose.
